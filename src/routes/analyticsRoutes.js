@@ -21,8 +21,9 @@
 // src/routes/analyticsRoutes.js
 
 const express = require("express");
-const router = express.Router();
 const analyticsController = require("../controllers/analyticsController");
+
+const router = express.Router();
 
 /**
  * GET /api/analytics/historical-data?coin=BTC&limit=100
@@ -49,6 +50,13 @@ router.get("/total-volume", analyticsController.getTotalVolume);
  */
 router.get("/moving-average", analyticsController.getMovingAverage);
 
-// Add more routes as needed for future analytics techniques
+// GET /api/analytics/recent-data?coin=BTC&limit=100
+router.get("/recent-data", analyticsController.getRecentData);
+
+router.get("/price-range", analyticsController.getPriceRange);
+
+router.get("/volatility-alerts", analyticsController.getVolatilityAlerts);
+router.get("/volatility-heatmap", analyticsController.getVolatilityHeatmap);
+router.get("/real-time-price-range", analyticsController.getRealTimePriceRange);
 
 module.exports = router;

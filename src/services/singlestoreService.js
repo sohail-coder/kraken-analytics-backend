@@ -244,7 +244,77 @@ const getMovingAverage = async (coin, period = 20) => {
   }
 };
 
-// Add more service functions as needed
+const getPriceRange = async (coin, interval = 15) => {
+  const query = `
+    SELECT MAX(best_ask_price) - MIN(best_ask_price) AS price_range
+    FROM ticker
+    WHERE coin = ?
+      AND received_at >= NOW() - INTERVAL ? MINUTE
+  `;
+
+  const rows = await execute(query, [coin, interval]);
+
+  return rows[0].price_range || null;
+};
+
+/**
+ * Executes a SQL query with parameters.
+ * @param {string} query - The SQL query to execute.
+ * @param {Array} params - The parameters for the SQL query.
+ * @returns {Promise<Array>} - The result rows.
+ */
+
+// Fetch Volatility Alerts (e.g., when ATR crosses a certain threshold)
+const getVolatilityAlerts = async (coin) => {
+  const query = `
+    SELECT AVG(greatest_diff) AS atr_14
+    FROM (
+        SELECT GREATEST(
+                 high_price_today - low_price_today,
+                 ABS(high_price_today - LAG(close_price, 1) OVER (ORDER BY received_at)),
+                 ABS(low_price_today - LAG(close_price, 1) OVER (ORDER BY received_at))
+               ) AS greatest_diff
+        FROM ticker
+        WHERE coin = ?
+          AND received_at >= NOW() - INTERVAL 14 MINUTE
+    ) AS subquery
+    HAVING atr_14 > 100; -- Threshold for alert
+  `;
+
+  const rows = await execute(query, [coin]);
+  return rows.length > 0
+    ? { alert: true, atr_14: rows[0].atr_14 }
+    : { alert: false };
+};
+
+// Get Volatility Heatmap Data for Multiple Cryptocurrencies
+const getVolatilityHeatmap = async () => {
+  const query = `
+    SELECT coin, STDDEV(best_ask_price) AS volatility
+    FROM ticker
+    WHERE received_at >= NOW() - INTERVAL 5 MINUTE
+    GROUP BY coin
+  `;
+
+  const rows = await execute(query);
+  return rows;
+};
+
+const getRealTimePriceRange = async (coin) => {
+  const query = `
+    SELECT MAX(best_ask_price) - MIN(best_ask_price) AS price_range,
+           MAX(best_ask_price) AS max_price, 
+           MIN(best_ask_price) AS min_price
+    FROM ticker
+    WHERE coin = ?
+    AND received_at >= NOW() - INTERVAL 3 SECOND;
+  `;
+
+  const rows = await execute(query, [coin]);
+  return rows.length > 0
+    ? rows[0]
+    : { price_range: 0, max_price: 0, min_price: 0 };
+};
 
 module.exports = {
   execute,
@@ -253,4 +323,8 @@ module.exports = {
   getRecentTickerData,
   getBollingerBands,
   getMovingAverage, // Exported for future use
+  getPriceRange,
+  getVolatilityAlerts,
+  getVolatilityHeatmap,
+  getRealTimePriceRange,
 };
