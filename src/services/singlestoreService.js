@@ -244,7 +244,142 @@ const getMovingAverage = async (coin, period = 20) => {
   }
 };
 
-// Add more service functions as needed
+// SingleStore Service
+
+// Assuming 'execute' is your database query function
+const getAverageTrueRange = async (coin, period = 20) => {
+  try {
+    // Validate input parameters
+    if (!coin) {
+      throw new Error("Coin is required and must not be undefined.");
+    }
+
+    if (!Number.isInteger(period) || period <= 0) {
+      throw new Error("Period must be a positive integer.");
+    }
+
+    // Define the SQL query to calculate ATR
+    const sqlQuery = `
+            WITH true_range_calculation AS (
+                SELECT
+                    received_at,
+                    high_price_today,
+                    low_price_today,
+                    close_price,
+                    (high_price_today - low_price_today) AS range_high_low,
+                    ABS(high_price_today - LAG(close_price, 1) OVER (ORDER BY received_at)) AS range_high_prev_close,
+                    ABS(low_price_today - LAG(close_price, 1) OVER (ORDER BY received_at)) AS range_low_prev_close
+                FROM
+                    ticker
+                WHERE
+                    coin = ?
+                    AND received_at >= NOW() - INTERVAL 4 HOUR
+            ),
+            true_range AS (
+                SELECT
+                    received_at,
+                    GREATEST(range_high_low, range_high_prev_close, range_low_prev_close) AS true_range
+                FROM
+                    true_range_calculation
+            )
+            SELECT
+                received_at,
+                AVG(true_range) OVER (ORDER BY received_at ROWS BETWEEN ? PRECEDING AND CURRENT ROW) AS ATR -- Placeholder for the period
+            FROM
+                true_range;
+        `;
+
+    // Execute the query with the validated coin and period
+    console.log("hereeeeeeee")
+    const results = await execute(sqlQuery, [coin, period - 1]);
+
+    // Return the results
+    return results;
+  } catch (error) {
+    console.error('Error calculating ATR:', error);
+    throw error;
+  }
+};
+
+const getHistoricalVolatile = async (coin) => {
+  try {
+    const sqlQuery = `
+            WITH log_returns AS (
+                SELECT
+                    received_at,
+                    close_price,
+                    LOG(close_price / LAG(close_price, 1) OVER (ORDER BY received_at)) AS log_return
+                FROM
+                    ticker
+                WHERE
+                    coin = ?
+                    AND received_at >= NOW() - INTERVAL 60 DAY
+            ),
+            volatility_over_time AS (
+                SELECT
+                    received_at,
+                    STDDEV(log_return) OVER (ORDER BY received_at ROWS BETWEEN 29 PRECEDING AND CURRENT ROW) AS historical_volatility
+                FROM
+                    log_returns
+                WHERE
+                    log_return IS NOT NULL
+            )
+            SELECT
+                received_at,
+                historical_volatility
+            FROM
+                volatility_over_time
+            WHERE
+                received_at >= NOW() - INTERVAL 30 DAY
+            ORDER BY
+                received_at;
+        `;
+
+    // Execute the query with the provided coin symbol (e.g., 'BTC')
+    const results = await execute(sqlQuery, [coin]);
+
+    // Return the results
+    return results;
+  } catch (error) {
+    console.error('Error calculating historical volatility:', error);
+    throw error;
+  }
+};
+
+
+// Export the function
+
+const getCandleData = async (coin) => {
+  try {
+    const query = `
+            SELECT
+          coin,
+    DATE_FORMAT(received_at, '%Y-%m-%d %H:%i:00') AS time_interval,
+    FIRST_VALUE(open_price_today) OVER (PARTITION BY pair, DATE_FORMAT(received_at, '%Y-%m-%d %H:%i') ORDER BY received_at) AS open_price,
+    LAST_VALUE(best_bid_price) OVER (PARTITION BY coin, DATE_FORMAT(received_at, '%Y-%m-%d %H:%i') ORDER BY received_at RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS close_price,
+    MAX(high_price_today) AS high_price,
+    MIN(low_price_today) AS low_price
+FROM
+    ticker
+WHERE
+    coin = ?
+GROUP BY
+    coin,
+    time_interval
+ORDER BY
+    time_interval;
+
+        `;
+
+    // Connect to SingleStore and run the query
+    const [rows] = await pool.query(query, [coin]);
+
+    return rows; // Return the result
+  } catch (error) {
+    console.error('Error fetching candlestick data:', error);
+    throw error; // Propagate the error
+  }
+};
 
 module.exports = {
   execute,
@@ -252,5 +387,8 @@ module.exports = {
   getTotalVolume,
   getRecentTickerData,
   getBollingerBands,
-  getMovingAverage, // Exported for future use
+  getMovingAverage,
+  getAverageTrueRange,
+  getHistoricalVolatile,
+  getCandleData // Exported for future use
 };

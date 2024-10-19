@@ -166,14 +166,16 @@ const emitAnalytics = async () => {
         2
       ); // period=20, stdDev=2
       const movingAverage = await singlestoreService.getMovingAverage(coin, 20); // period=20
-
+      const averageTrueRange = await singlestoreService.getAverageTrueRange(coin);
       return {
         coin,
         analytics: {
           average_close_price: averagePrice,
           total_volume: totalVolume,
           bollinger_bands: bollingerBands,
-          moving_average: movingAverage, // Added moving average
+          moving_average: movingAverage,
+          averageTrueRange: averageTrueRange
+          // Added moving average
           // Future analytics techniques can be added here, e.g.,
           // relative_strength_index: { ... },
           // moving_averages: { ... },
