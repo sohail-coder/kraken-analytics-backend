@@ -50,5 +50,10 @@ router.get("/total-volume", analyticsController.getTotalVolume);
 router.get("/moving-average", analyticsController.getMovingAverage);
 
 // Add more routes as needed for future analytics techniques
+// /api/analytics/average_true_range
+router.get("/average_true_range/", analyticsController.getAverageTrueRange)
 
+router.get("/historical_volatility/", analyticsController.getHistoricalVolatile)
+
+router.get("/get_candle_data", analyticsController.getCandleData);
 module.exports = router;
