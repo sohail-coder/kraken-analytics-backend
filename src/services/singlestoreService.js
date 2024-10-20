@@ -207,6 +207,8 @@ const getBollingerBands = async (coin, period = 20, stdDevMultiplier = 2) => {
  * @param {string} coin - The cryptocurrency symbol (e.g., BTC).
  * @param {number} period - The number of periods for the moving average (e.g., 20).
  * @returns {Promise<number|null>} - The moving average or null if insufficient data.
+ * @returns {Promise<Object>} - The statistics object.
+
  */
 const getMovingAverage = async (coin, period = 20) => {
   // Validate that 'period' is a positive integer
@@ -290,13 +292,40 @@ const getAverageTrueRange = async (coin, period = 20) => {
         `;
 
     // Execute the query with the validated coin and period
-    console.log("hereeeeeeee")
     const results = await execute(sqlQuery, [coin, period - 1]);
 
     // Return the results
     return results;
   } catch (error) {
-    console.error('Error calculating ATR:', error);
+    console.error("Error calculating ATR:", error);
+    throw error;
+  }
+};
+const getCoinStats = async () => {
+  const query = `
+    SELECT
+      (SELECT coin FROM ticker ORDER BY best_ask_price DESC LIMIT 1) AS best_ask_coin,
+      (SELECT best_ask_price FROM ticker ORDER BY best_ask_price DESC LIMIT 1) AS best_ask_price,
+      (SELECT coin FROM ticker ORDER BY best_bid_price DESC LIMIT 1) AS best_bid_coin,
+      (SELECT best_bid_price FROM ticker ORDER BY best_bid_price DESC LIMIT 1) AS best_bid_price,
+      (SELECT coin FROM ticker ORDER BY volume_today DESC LIMIT 1) AS max_volume_coin,
+      (SELECT volume_today FROM ticker ORDER BY volume_today DESC LIMIT 1) AS max_volume,
+      (SELECT coin FROM ticker ORDER BY close_price DESC LIMIT 1) AS max_price_coin,
+      (SELECT close_price FROM ticker ORDER BY close_price DESC LIMIT 1) AS max_price,
+      (SELECT coin FROM ticker ORDER BY volume_today ASC LIMIT 1) AS min_volume_coin,
+      (SELECT volume_today FROM ticker ORDER BY volume_today ASC LIMIT 1) AS min_volume,
+      (SELECT coin FROM ticker ORDER BY close_price ASC LIMIT 1) AS min_price_coin,
+      (SELECT close_price FROM ticker ORDER BY close_price ASC LIMIT 1) AS min_price
+  `;
+
+  try {
+    const rows = await execute(query);
+    if (rows && rows.length > 0) {
+      return rows[0]; // Return the first row containing the stats
+    } else {
+      return null; // Return null if no data is available
+    }
+  } catch (error) {
     throw error;
   }
 };
@@ -341,11 +370,10 @@ const getHistoricalVolatile = async (coin) => {
     // Return the results
     return results;
   } catch (error) {
-    console.error('Error calculating historical volatility:', error);
+    console.error("Error calculating historical volatility:", error);
     throw error;
   }
 };
-
 
 // Export the function
 
@@ -376,12 +404,13 @@ ORDER BY
 
     return rows; // Return the result
   } catch (error) {
-    console.error('Error fetching candlestick data:', error);
+    console.error("Error fetching candlestick data:", error);
     throw error; // Propagate the error
   }
 };
 
 module.exports = {
+  getCoinStats,
   execute,
   getAverageClosePrice,
   getTotalVolume,
@@ -390,5 +419,5 @@ module.exports = {
   getMovingAverage,
   getAverageTrueRange,
   getHistoricalVolatile,
-  getCandleData // Exported for future use
+  getCandleData, // Exported for future use
 };

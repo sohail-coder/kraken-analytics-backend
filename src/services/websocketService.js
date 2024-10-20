@@ -80,7 +80,7 @@ const connectToKrakenWebSocket = () => {
         // Insert the record into Singlestore
         try {
           await tickerModel.insertTickerRecord(record);
-          logger.info(`Inserted ${record.coin} ticker data into Singlestore`);
+          // logger.info(`Inserted ${record.coin} ticker data into Singlestore`);
         } catch (dbError) {
           logger.error(`Error inserting ${record.coin} data into Singlestore:`, dbError);
         }
@@ -101,3 +101,4 @@ const connectToKrakenWebSocket = () => {
 };
 
 module.exports = connectToKrakenWebSocket;
+// export default connectToKrakenWebSocket;
