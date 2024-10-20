@@ -103,7 +103,7 @@ const singlestoreService = require("./services/singlestoreService");
 const logger = require("./utils/logger");
 const errorHandler = require("./middleware/errorHandler");
 require("dotenv").config();
-const groqService = require("./services/groqService");
+const { handleQuery } = require("./services/groqService");
 
 const app = express();
 const server = http.createServer(app);
@@ -124,24 +124,17 @@ app.use(express.json());
 app.use("/api/analytics", analyticsRoutes);
 
 app.post("/query", async (req, res) => {
-  const query = req.body.query;
-
-  if (!query) {
-    return res.status(400).json({ error: "Query not provided" });
-  }
-
   try {
-    // Call handleQuery and wait for the result
-    const result = await groqService.handleQuery(query);
-
-    // Respond with the result
-    res
-      .status(200)
-      .json({ message: "Query processed successfully", data: result });
+    const userQuery = req.body.query;
+    const response = await handleQuery(userQuery);
+    res.json({ response });
   } catch (error) {
-    console.error("Error processing query:", error);
-    res.status(500).json({ error: "Error processing query" });
+    res.status(500).json({ error: error.message });
   }
+});
+
+app.listen(3000, () => {
+  console.log("Server is running on port 3000");
 });
 
 // Error Handling Middleware
