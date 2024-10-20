@@ -1,7 +1,7 @@
 // src/models/tickerModel.js
 
 const singlestoreService = require('../services/singlestoreService');
-
+// import singlestoreService from "../services/singlestoreService.js"
 /**
  * Inserts a new ticker record into Singlestore.
  * @param {Object} record - The ticker data to insert.
@@ -54,3 +54,4 @@ const insertTickerRecord = async (record) => {
 module.exports = {
   insertTickerRecord,
 };
+// export default insertTickerRecord;
