@@ -296,40 +296,75 @@ app.post("/api/simulate-purchase", async (req, res) => {
       return res.status(400).json({ error: "Invalid Ethereum address." });
     }
 
-    // Define the amount to simulate buying (e.g., 0.001 ETH)
-    const ethToSend = ethers.utils.parseEther("0.001"); // 0.001 ETH
+    // Step 1: Call the prediction endpoint internally
+    const predictionResponse = await axios.post(
+      "http://127.0.0.1:5000/prediction",
+      {
+        pair: req.body.pair, // You need to pass whatever params `prediction` expects
+      }
+    );
 
-    // Define the amount parameter (could be set to 0.01 for balance adjustment)
-    const amountToBuy = 1; // Define how much 'fake ETH' is bought per 0.001 ETH
+    const { processed_vectors, decision } = predictionResponse.data;
 
-    // Call buy function, sending 0.001 ETH
-    const tx = await purchaseSimulator.buy(amountToBuy, { value: ethToSend });
+    // Step 2: Calculate accuracy from the vectors
+    const accuracy =
+      (processed_vectors.reduce((a, b) => a + b, 0) /
+        processed_vectors.length) *
+      100;
 
-    console.log(`Transaction submitted: ${tx.hash}`);
+    accuracy = 80;
 
-    // Wait for transaction to be mined
-    const receipt = await tx.wait();
+    console.log(`Accuracy: ${accuracy}, Decision: ${decision}`);
 
-    console.log(`Transaction mined in block ${receipt.blockNumber}`);
+    // Step 3: Check accuracy and decision to trigger buy function
+    if (accuracy > 75 && decision === "Buy") {
+      console.log("Triggering buy action...");
 
-    // Update user's balance
-    if (!userBalances[address]) {
-      userBalances[address] = 0;
+      // Define the amount to simulate buying (e.g., 0.001 ETH)
+      const ethToSend = ethers.utils.parseEther("0.001"); // 0.001 ETH
+
+      // Define the amount parameter (could be set to 0.01 for balance adjustment)
+      const amountToBuy = 1; // Define how much 'fake ETH' is bought per 0.001 ETH
+
+      // Call buy function, sending 0.001 ETH
+      const tx = await purchaseSimulator.buy(amountToBuy, { value: ethToSend });
+
+      console.log(`Transaction submitted: ${tx.hash}`);
+
+      // Wait for transaction to be mined
+      const receipt = await tx.wait();
+
+      console.log(`Transaction mined in block ${receipt.blockNumber}`);
+
+      // Update user's balance
+      if (!userBalances[address]) {
+        userBalances[address] = 0;
+      }
+
+      // On buying, increase balance by 0.01 MockETH
+      userBalances[address] += 0.01;
+
+      // Fetch Sepolia ETH balance
+      const sepoliaBalanceWei = await provider.getBalance(address);
+      const sepoliaBalance = ethers.utils.formatEther(sepoliaBalanceWei);
+
+      // Respond with ethBought, newMockBalance, and sepoliaETHBalance
+      res.status(200).json({
+        ethBought: "0.001 ETH",
+        newMockBalance: userBalances[address].toFixed(2) + " MockETH",
+        sepoliaETHBalance: sepoliaBalance + " ETH",
+      });
+    } else {
+      console.log(
+        "No action taken: Either accuracy is too low or decision is not Buy."
+      );
+      // No action needed for Hold or Sell or when accuracy is too low
+      res.status(200).json({
+        message: "No purchase triggered",
+        accuracy,
+        decision,
+      });
     }
-
-    // On buying, increase balance by 0.01 MockETH
-    userBalances[address] += 0.01;
-
-    // Fetch Sepolia ETH balance
-    const sepoliaBalanceWei = await provider.getBalance(address);
-    const sepoliaBalance = ethers.utils.formatEther(sepoliaBalanceWei);
-
-    // Respond with ethBought, newMockBalance, and sepoliaETHBalance
-    res.status(200).json({
-      ethBought: "0.001 ETH",
-      newMockBalance: userBalances[address].toFixed(2) + " MockETH",
-      sepoliaETHBalance: sepoliaBalance + " ETH",
-    });
   } catch (error) {
     console.error("Error in /api/simulate-purchase:", error);
     res
