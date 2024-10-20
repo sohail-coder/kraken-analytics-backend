@@ -52,6 +52,11 @@ router.get("/moving-average", analyticsController.getMovingAverage);
 // Add more routes as needed for future analytics techniques
 // /api/analytics/average_true_range
 router.get("/average_true_range/", analyticsController.getAverageTrueRange)
+/**
+ * GET /api/analytics/stats
+ * Returns comprehensive stats like best ask price, best bid price, max volume, etc.
+ */
+router.get("/stats", analyticsController.getCoinStats);
 
 router.get("/historical_volatility/", analyticsController.getHistoricalVolatile)
 
