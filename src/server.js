@@ -128,6 +128,7 @@ const errorHandler = require("./middleware/errorHandler");
 const { ethers } = require("ethers");
 
 require("dotenv").config();
+const { handleQuery } = require("./services/groqService");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -149,6 +150,20 @@ app.use(express.json());
 
 // API Routes
 app.use("/api/analytics", analyticsRoutes);
+
+app.post("/query", async (req, res) => {
+  try {
+    const userQuery = req.body.query;
+    const response = await handleQuery(userQuery);
+    res.json({ response });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Server is running on port 3000");
+});
 
 // Error Handling Middleware
 app.use(errorHandler);
