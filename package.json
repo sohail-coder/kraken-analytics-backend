@@ -16,7 +16,6 @@
     "@sanity/client": "^6.22.2",
     "axios": "^1.7.7",
     "cors": "^2.8.5",
-    "ethers": "^5.7.2",
     "express": "^4.21.1",
     "groq-sdk": "^0.7.0",
     "mysql2": "^3.11.3",
